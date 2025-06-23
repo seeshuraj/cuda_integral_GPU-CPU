@@ -97,6 +97,5 @@ cuda_integral_GPU-CPU/
 ## ✅ Final Notes
 - Proof of progress was tracked via Git: commits show CPU, GPU, and benchmarking stages.
 - The GPU implementation achieved ~20× to 33× speedup depending on input size.
-- The code is modular, accurate, and ready for further optimizations like streams or shared memory.
 
 ---
