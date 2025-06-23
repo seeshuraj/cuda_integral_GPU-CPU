@@ -33,11 +33,11 @@ int main(int argc, char* argv[]) {
         xDouble[i] = static_cast<double>(x);
     }
 
+    vector<float> cpuResultsFloat(m);
+    vector<double> cpuResultsDouble(m);
     if (!skipCPU) {
         cout << "Running CPU version...\n";
         auto start = chrono::high_resolution_clock::now();
-        vector<float> cpuResultsFloat(m);
-        vector<double> cpuResultsDouble(m);
         for (int i = 0; i < m; ++i) {
             cpuResultsFloat[i] = exponentialIntegralFloat(n, xFloat[i]);
             cpuResultsDouble[i] = exponentialIntegralDouble(n, xDouble[i]);
@@ -47,6 +47,8 @@ int main(int argc, char* argv[]) {
         cout << "CPU Time: " << elapsed.count() << " seconds\n";
     }
 
+    vector<float> gpuResultsFloat;
+    vector<double> gpuResultsDouble;
     if (useGPU) {
         cout << "Running GPU version...\n";
         cudaEvent_t start, stop;
@@ -54,8 +56,6 @@ int main(int argc, char* argv[]) {
         cudaEventCreate(&stop);
 
         cudaEventRecord(start);
-        vector<float> gpuResultsFloat;
-        vector<double> gpuResultsDouble;
         computeExponentialIntegralFloatGPU(n, xFloat, gpuResultsFloat);
         computeExponentialIntegralDoubleGPU(n, xDouble, gpuResultsDouble);
         cudaEventRecord(stop);
@@ -69,6 +69,16 @@ int main(int argc, char* argv[]) {
         cudaEventDestroy(stop);
     }
 
+    // Compare CPU and GPU results for float precision (first 5 samples)
+    if (!skipCPU && useGPU) {
+        cout << "\nVerifying results (first 5 samples):\n";
+        for (int i = 0; i < 5; ++i) {
+            float cpuVal = cpuResultsFloat[i];
+            float gpuVal = gpuResultsFloat[i];
+            float error = fabs(cpuVal - gpuVal);
+            printf("x = %.5f | CPU: %.8f | GPU: %.8f | Error: %.2e\n", xFloat[i], cpuVal, gpuVal, error);
+        }
+    }
+
     return 0;
 }
-
