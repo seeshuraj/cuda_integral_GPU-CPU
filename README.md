@@ -6,86 +6,73 @@
 
 ---
 
-## ✅ Overview
-This project implements the exponential integral calculation `E_n(x)` using both CPU and CUDA GPU programming. The main objective was to accelerate the computation using GPU kernels and compare performance to the CPU baseline.
+## Overview
 
----
+This project implements a high-performance CUDA-based calculator for the Exponential Integral function $E_n(x)$, supporting both single and double precision computations. It benchmarks the GPU implementation against its CPU counterpart and analyzes the performance gains.
 
-## 📌 Algorithm Used
-The exponential integral:
-\[ E_n(x) = \int_1^\infty \frac{e^{-xt}}{t^n} \,dt \]
+## Features
 
-Was approximated using the **trapezoidal rule** with 1,000,000 integration steps per value of `x`. Both float and double versions were implemented.
+* ✅ Single and double precision CUDA kernels
+* ✅ Accurate computation of $E_n(x)$ for arbitrary $n$ and $x$
+* ✅ Command-line flags to run CPU-only, GPU-only, or both
+* ✅ Speedup measurement and result validation
+* ✅ LLM-based comparison (ChatGPT-4)
 
----
+## Requirements
 
-## ⚙️ Implementation Details
-- CPU code: `cpu_integral.cpp`
-- CUDA code: `gpu_integral.cu`
-- Unified interface in `main.cpp`
-- Command-line flags:
-  - `-n <order>`
-  - `-m <samples>`
-  - `-g` for GPU mode
-  - `-c` to skip CPU
+* NVIDIA GPU with CUDA support
+* CUDA Toolkit 11.0 or higher
+* `make`, `g++`, `nvcc`
 
----
+## Build Instructions
 
-## 📊 Benchmark Results
-
-### ✅ Timings
-| Sample Size (m) | CPU Time (s) | GPU Time (s) | Speedup |
-|-----------------|--------------|--------------|---------|
-| 5000            | 279.88       | 13.96        | ~20.05× |
-| 8192            | ~458.64*     | 13.98        | ~32.8×  |
-| 16384           | ~917.28*     | 27.15        | ~33.78× |
-| 20000           | ~1120.0*     | 53.68        | ~20.87× |
-
-> *CPU times extrapolated linearly for size comparison.
-
-### 🖼️ Speedup Plot
-![Speedup Plot](speedup_plot.png)
-
----
-
-## 🧪 Accuracy Verification
-| x-value | CPU Result | GPU Result | Absolute Error |
-|--------|------------|------------|----------------|
-| 0.0000 | 0.11110278 | 0.11110277 | 7.45e-09        |
-| 0.1010 | 0.09917799 | 0.09917801 | 1.49e-08        |
-| 0.2020 | 0.08855033 | 0.08855033 | 0.00e+00        |
-| 0.3030 | 0.07907678 | 0.07907678 | 0.00e+00        |
-| 0.4040 | 0.07062933 | 0.07062934 | 7.45e-09        |
-
-✅ All differences were < `1e-5` as required.
-
----
-
-## 🤖 LLM Code Evaluation (Task 2)
-We tested GPT-4 by pasting the original CPU code and asking it to convert it into CUDA.
-
-### 🔍 Observations:
-- The LLM generated a valid CUDA kernel using the trapezoidal rule.
-- It recommended using `__global__` kernels with parallelization over `x` samples.
-- It did not suggest advanced optimizations like shared memory or streams.
-
-✅ The generated CUDA code matched our hand-written implementation closely and produced correct results.
-
----
-
-## 🧠 Challenges & Lessons
-- TCD's `cuda01` had CUDA 10.1 + GCC 10+ mismatch — could not compile there
-- Moved to local machine with CUDA 12.2 and GCC 11
-- Carefully managed CPU and GPU validation to ensure < `1e-5` tolerance
-
----
-
-## 📦 Project Structure
+```bash
+make clean
+make
 ```
-cuda_integral_GPU-CPU/
+
+## Usage
+
+```bash
+./ei_exec [-c] [-g] [-n <max_n>] [-m <num_samples>]
+
+# Examples:
+./ei_exec -n 8192 -m 8192        # Run both CPU and GPU
+./ei_exec -g -n 8192 -m 8192     # GPU only
+./ei_exec -c -n 8192 -m 8192     # CPU only
+```
+
+## Output
+
+```
+Running CPU version...
+CPU Time: 353.038 seconds
+Running GPU version...
+GPU Time (float): 0.721694 seconds
+GPU Time (double): 29.1637 seconds
+Speedup (float): 489.179
+Speedup (double): 12.1054
+
+Verifying results (first 5 samples):
+x = 0.00000 | CPU_f: 0.00012874 | GPU_f: 0.00012874 | Err_f: 0.00e+00
+...
+```
+
+## Benchmarking Configurations
+
+* `-n 5000 -m 5000`
+* `-n 8192 -m 8192`
+* `-n 16384 -m 16384`
+* `-n 20000 -m 20000`
+
+Speedup graphs are available in `speedup_plot.png`.
+
+## Directory Structure
+
+```
 ├── main.cpp
-├── cpu_integral.cpp/h
-├── gpu_integral.cu/h
+├── cpu_integral.cpp / .h
+├── gpu_integral.cu / .h
 ├── Makefile
 ├── plot_speedup.py
 ├── speedup_plot.png
@@ -97,5 +84,6 @@ cuda_integral_GPU-CPU/
 ## ✅ Final Notes
 - Proof of progress was tracked via Git: commits show CPU, GPU, and benchmarking stages.
 - The GPU implementation achieved ~20× to 33× speedup depending on input size.
+- The code is modular, accurate, and ready for further optimizations like streams or shared memory.
 
 ---

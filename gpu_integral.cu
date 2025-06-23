@@ -50,6 +50,12 @@ void computeExponentialIntegralFloatGPU(int n, const std::vector<float>& xValues
     results.resize(size);
 
     float *d_x, *d_results;
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
+    cudaEventRecord(start);
+
     cudaMalloc(&d_x, size * sizeof(float));
     cudaMalloc(&d_results, size * sizeof(float));
 
@@ -62,6 +68,16 @@ void computeExponentialIntegralFloatGPU(int n, const std::vector<float>& xValues
 
     cudaFree(d_x);
     cudaFree(d_results);
+
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+
+    float elapsedTime;
+    cudaEventElapsedTime(&elapsedTime, start, stop);
+    std::cout << "[DEBUG] Total CUDA time (float): " << elapsedTime / 1000.0f << " seconds\n";
+
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
 }
 
 void computeExponentialIntegralDoubleGPU(int n, const std::vector<double>& xValues, std::vector<double>& results) {
@@ -69,6 +85,12 @@ void computeExponentialIntegralDoubleGPU(int n, const std::vector<double>& xValu
     results.resize(size);
 
     double *d_x, *d_results;
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
+    cudaEventRecord(start);
+
     cudaMalloc(&d_x, size * sizeof(double));
     cudaMalloc(&d_results, size * sizeof(double));
 
@@ -81,5 +103,14 @@ void computeExponentialIntegralDoubleGPU(int n, const std::vector<double>& xValu
 
     cudaFree(d_x);
     cudaFree(d_results);
-}
 
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+
+    float elapsedTime;
+    cudaEventElapsedTime(&elapsedTime, start, stop);
+    std::cout << "[DEBUG] Total CUDA time (double): " << elapsedTime / 1000.0f << " seconds\n";
+
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
+}  
