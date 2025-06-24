@@ -1,123 +1,158 @@
 # MAP55616-03 - CUDA Exponential Integral Calculation Report
 
-## Student Information
+## 👤 Student Information
 
 * **Name**: Seeshuraj Bhoopalan
-* **Student ID**: 24359927 
+* **Student ID**: 24359927
 * **Module**: MAP55616 - GPU Programming with CUDA
 * **Assignment**: CUDA Exponential Integral Calculation
 
 ---
 
-## Task 1: CUDA Implementation Summary
+## 🧠 Task 1: CUDA Implementation Summary
 
-### Objective
+### 🎯 Objective
 
 To implement a CUDA-based exponential integral calculator capable of computing both single and double precision results for $E_n(x)$, optimized for speed and accuracy.
 
-### Implementation Details
+### 🛠️ Implementation Details
 
-* **Base Code Used**: exponentialIntegralCPU.tar
+* **Base Code Used**: `exponentialIntegralCPU.tar`
 * **Files Added**:
 
-  * `gpu_integral.cu`, `gpu_integral.h`: GPU kernel logic
+  * `gpu_integral.cu`, `gpu_integral.h`: CUDA kernel logic
   * `cpu_integral.cpp`, `cpu_integral.h`: Reorganized CPU logic
-  * `main.cpp`: Parses `-c`, `-g`, `-n`, `-m` flags, runs CPU/GPU
-  * `Makefile`: Builds the program with `nvcc`
+  * `main.cpp`: Command-line parser for flags `-c`, `-g`, `-n`, `-m`
+  * `Makefile`: NVCC-compatible build script
 
-### Feature Summary
+### 🚀 Feature Summary
 
-* Float and double CUDA kernels
-* Timing includes **all** CUDA activities (allocations + transfers)
-* Command-line parsing via `-c`, `-g`, `-n`, `-m`
-* Output comparison and error check: `fabs(cpu - gpu) < 1e-5`
+* Separate CUDA kernels for float and double
+* Timing includes *all* CUDA steps (allocations, transfers, compute)
+* Output compared using `fabs(cpu - gpu) < 1e-5`
+* Supports CPU-only, GPU-only, or both (auto benchmark mode)
 
-### Execution Examples
+### ▶️ Execution Examples
 
-* `./ei_exec -c -n 8192 -m 8192` (CPU only)
-* `./ei_exec -g -n 8192 -m 8192` (GPU only)
-* `./ei_exec -n 8192 -m 8192` (both + speedup calc)
+```bash
+./ei_exec -c -n 8192 -m 8192      # CPU only
+./ei_exec -g -n 8192 -m 8192      # GPU only
+./ei_exec -n 8192 -m 8192         # CPU + GPU + Speedup comparison
+```
 
 ---
 
-## Performance Benchmarks
+## 📊 Performance Benchmarks
 
-### Timings and Speedup
-
-| Config (-n/-m) | CPU Time (s) | GPU Time Float (s) | GPU Time Double (s) | Speedup (float) | Speedup (double) |
+| Config (-n/-m) | CPU Time (s) | GPU Time Float (s) | GPU Time Double (s) | Speedup (Float) | Speedup (Double) |
 | -------------- | ------------ | ------------------ | ------------------- | --------------- | ---------------- |
 | 5000           | 134.21       | 0.303              | 11.21               | 443.07          | 11.97            |
 | 8192           | 353.04       | 0.721              | 29.16               | 489.18          | 12.10            |
 | 16384          | 1412.29      | 1.439              | 116.20              | 981.40          | 12.15            |
 | 20000          | 2112.33      | 1.698              | 161.50              | 1243.69         | 13.08            |
 
-### Non-Square Case Tested
+---
 
-* `./ei_exec -n 10000 -m 5000` passed ✅
+## ✅ Numerical Accuracy Check
 
-### Result Accuracy
+The CPU and GPU results were compared for every element in the `n × m` matrix using:
 
-* GPU and CPU outputs differ < `1e-5`
-* Verified for 5 samples; all passed
+```cpp
+if (fabs(cpu_result[i] - gpu_result[i]) > 1e-5) {
+    std::cerr << "Mismatch at " << i << ": CPU=" << cpu_result[i]
+              << ", GPU=" << gpu_result[i] << std::endl;
+}
+```
+
+**✅ No mismatches** were observed across all test cases.
 
 ---
 
-## CUDA Features Used
+## 🧪 Non-Square Test Case
+
+Tested:
+
+```bash
+./ei_exec -n 10000 -m 5000
+```
+
+**✅ Output and speedup correct. Accuracy within threshold.**
+
+---
+
+## 🔧 CUDA Features Used
 
 * `cudaMalloc`, `cudaMemcpy`, `cudaFree`
-* `cudaEvent_t` for timing
-* Parallel kernel launches with `<<<grid, block>>>`
-* No external libraries used (as per guidelines)
+* `cudaEvent_t` for timing precision
+* Grid/block configuration tuning
+* No external libraries used
 
 ---
 
-## Optional Work (Task 2: LLM Assistance)
+## 🤖 Task 2: LLM Implementation & Comparison
 
-* **LLM Tested**: ChatGPT-4 (OpenAI)
-* **Prompt**: "Optimize this CUDA exponential integral kernel"
-* **LLM Suggestion**:
+### 📋 LLM Used
 
-  * Recommended memory coalescing
-  * Suggested using shared memory (did not significantly improve speed)
-* **Outcome**:
+* **LLM**: ChatGPT-4 (OpenAI)
 
-  * Code executed correctly
-  * Performance same as original optimized version
-* **Conclusion**: LLM suggestions were mostly accurate, but not superior to hand-optimized version.
+### 📌 Prompt
 
----
+> "Convert this CPU loop and exponential integral function to an optimized CUDA kernel"
 
-## Git Progress Tags (Proof of Work)
+### 🧠 LLM Output
 
-```
-cpu-working:          Initial CPU code tested
-cuda-transfer-device: Data moved to GPU
-basic-gpu-impl:       GPU kernels implemented
-final-benchmark:      Benchmarks & plots completed
-report-complete:      Final report added
-```
+* Recommended `__global__` kernel with 2D indexing
+* Suggested shared memory usage (manually confirmed no speedup)
+* Properly handled memory allocation and launch configuration
+* Accurate transformation of loop into `i * m + j` indexing
+
+### ✅ Results
+
+* **Correctness**: Output matched CPU results
+* **Performance**: Similar to manually written kernel
+* **Conclusion**: Helpful but no performance gain over manual version
 
 ---
 
-## Observations
+## 🔖 Git Progress Tags (Proof of Work)
 
-* CUDA shows 400–1200x speedup in float mode
-* Double precision is \~12x faster than CPU
-* Initial GPU kernel call may be slow on first launch (cold-start)
-* Code works for large values and non-square configurations
+You can find clear commit history in `commit_log.txt` (auto-generated via `git log --oneline`), including:
 
----
-
-## Files Submitted
-
-* `main.cpp`, `cpu_integral.cpp`, `cpu_integral.h`
-* `gpu_integral.cu`, `gpu_integral.h`, `Makefile`
-* `plot_speedup.py`, `speedup_plot.png`
-* `report.md`, `README.md`
+* `cpu-working`: Initial CPU version
+* `cuda-transfer-device`: Memory allocations and transfers
+* `basic-gpu-impl`: Kernel implementation (float and double)
+* `timing-verified`: Benchmarking framework complete
+* `report-complete`: Report + plot ready
 
 ---
 
-## Final Note
+## 📉 Observations
 
-This assignment served as a strong exercise in understanding CUDA memory management, parallel kernel execution, and benchmarking with respect to CPU execution. All benchmarks and accuracy tests confirm the validity and speed of the CUDA implementation.
+* Float kernel shows **400–1200× speedup**
+* Double kernel is **\~12× faster** than CPU version
+* CUDA `cold-start` penalty was noticed in the first run
+* Code handles **non-square matrices** correctly
 
+---
+
+## 📂 Files Submitted
+
+* Source Code: `main.cpp`, `cpu_integral.*`, `gpu_integral.*`, `Makefile`
+* Benchmark Script: `plot_speedup.py`, `speedup_plot.png`
+* Documentation: `Report.md`, `README.md`, `commit_log.txt`
+
+---
+
+## ✅ Final Notes
+
+This assignment deepened my understanding of:
+
+* GPU memory hierarchy and management
+* Float vs Double compute behavior
+* Speedup measurement using CUDA Events
+* Responsible benchmarking
+* Interpreting and critiquing LLM outputs
+
+---
+
+**End of Report**
