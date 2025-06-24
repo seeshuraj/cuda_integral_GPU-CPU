@@ -13,7 +13,7 @@
 
 ### 🎯 Objective
 
-To implement a CUDA-based exponential integral calculator capable of computing both single and double precision results for $E_n(x)$, optimized for speed and accuracy.
+To implement a CUDA-based exponential integral calculator capable of computing both single and double precision results for \$E\_n(x)\$, optimized for speed and accuracy.
 
 ### 🛠️ Implementation Details
 
@@ -152,6 +152,18 @@ This assignment deepened my understanding of:
 * Speedup measurement using CUDA Events
 * Responsible benchmarking
 * Interpreting and critiquing LLM outputs
+
+---
+
+### 🔹 Additional Environment Note
+
+Initially, I tried implementing the CUDA assignment on **TCD's `cuda01` cluster**, but faced environment issues:
+
+* It is locked to **CUDA v10.1**
+* Incompatible with **GCC > 8** (local GCC was v10+)
+* Lacked module permissions to downgrade or override GCC
+
+As a result, I proceeded with implementation on my **local machine (NVIDIA GEFORCE RTX, CUDA 12.2, GCC 11)**, ensuring full compatibility and successful compilation + execution.
 
 ---
 
