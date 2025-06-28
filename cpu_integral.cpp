@@ -1,22 +1,19 @@
 #include <cmath>
 #include "cpu_integral.h"
 
-// CPU implementation: E_n(x) function for float
 float exponentialIntegralFloat(int n, float x) {
-    if (n == 0) return expf(-x) / x;
     float sum = 0.0f;
-    for (int k = 1; k <= 100; ++k) {
-        sum += powf(x, k - 1) / (tgammaf(k + n));
+    for (int k = 0; k < 100; ++k) {
+        sum += pow(x, k + n) / (tgamma(k + n + 1));
     }
-    return expf(-x) * sum;
+    return sum * exp(-x);
 }
 
-// CPU implementation: E_n(x) function for double
 double exponentialIntegralDouble(int n, double x) {
-    if (n == 0) return exp(-x) / x;
     double sum = 0.0;
-    for (int k = 1; k <= 100; ++k) {
-        sum += pow(x, k - 1) / (tgamma(k + n));
+    for (int k = 0; k < 100; ++k) {
+        sum += pow(x, k + n) / (tgamma(k + n + 1));
     }
-    return exp(-x) * sum;
+    return sum * exp(-x);
 }
+
