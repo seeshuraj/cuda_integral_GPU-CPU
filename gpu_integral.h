@@ -1,9 +1,7 @@
 #ifndef GPU_INTEGRAL_H
 #define GPU_INTEGRAL_H
 
-#include <vector>
-
-void computeExponentialIntegralFloatGPU(int n, const std::vector<float>& xValues, std::vector<float>& results);
-void computeExponentialIntegralDoubleGPU(int n, const std::vector<double>& xValues, std::vector<double>& results);
+void launchFloatKernel(int* ns, float* xs, float* results, int total);
+void launchDoubleKernel(int* ns, double* xs, double* results, int total);
 
 #endif // GPU_INTEGRAL_H

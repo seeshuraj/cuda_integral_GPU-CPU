@@ -4,5 +4,4 @@
 float exponentialIntegralFloat(int n, float x);
 double exponentialIntegralDouble(int n, double x);
 
-#endif // CPU_INTEGRAL_H
-
+#endif

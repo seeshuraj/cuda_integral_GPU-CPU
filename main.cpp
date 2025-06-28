@@ -1,119 +1,117 @@
-#include <cuda_runtime.h>
-#include "cpu_integral.h"
-#include "gpu_integral.h"
 #include <iostream>
+#include <cmath>
+#include <cstring>
 #include <vector>
 #include <chrono>
-#include <cstring>
-#include <cmath>
-#include <fstream>
+#include <iomanip>
 
-using namespace std;
+#include "gpu_integral.h"
 
-void printUsage() {
-    cout << "Usage: ./ei_exec [-c] [-g] [-n <max_n>] [-m <num_samples>]" << endl;
-    cout << "  -c : Run only CPU version (skip GPU)" << endl;
-    cout << "  -g : Run only GPU version (skip CPU)" << endl;
-    cout << "  -n : Set maximum n for integral" << endl;
-    cout << "  -m : Number of x samples" << endl;
-}
-
-void checkCUDAError(const string& msg) {
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess) {
-        cerr << "CUDA Error after " << msg << ": " << cudaGetErrorString(err) << endl;
-        exit(EXIT_FAILURE);
+// CPU float version
+float exponentialIntegralFloat(int n, float x) {
+    if (n == 0) return expf(-x) / x;
+    float sum = 0.0f;
+    for (int k = 1; k <= 100; ++k) {
+        sum += powf(x, k - 1) / (tgammaf(k + n));
     }
+    return expf(-x) * sum;
 }
 
-int main(int argc, char* argv[]) {
-    bool runCPU = true;
-    bool runGPU = true;
-    int n = 10, m = 100;
+// CPU double version
+double exponentialIntegralDouble(int n, double x) {
+    if (n == 0) return exp(-x) / x;
+    double sum = 0.0;
+    for (int k = 1; k <= 100; ++k) {
+        sum += pow(x, k - 1) / (tgamma(k + n));
+    }
+    return exp(-x) * sum;
+}
 
+// Command line parsing
+void parseArguments(int argc, char** argv, int& N, int& M, bool& useCPU) {
+    N = 8192;
+    M = 8192;
+    useCPU = false;
     for (int i = 1; i < argc; ++i) {
-        if (strcmp(argv[i], "-c") == 0) runGPU = false;
-        else if (strcmp(argv[i], "-g") == 0) runCPU = false;
-        else if (strcmp(argv[i], "-n") == 0 && i+1 < argc) n = atoi(argv[++i]);
-        else if (strcmp(argv[i], "-m") == 0 && i+1 < argc) m = atoi(argv[++i]);
-        else printUsage();
+        if (strcmp(argv[i], "-n") == 0 && i + 1 < argc)
+            N = atoi(argv[++i]);
+        else if (strcmp(argv[i], "-m") == 0 && i + 1 < argc)
+            M = atoi(argv[++i]);
+        else if (strcmp(argv[i], "-g") == 0)
+            useCPU = true; // Run CPU only
+    }
+}
+
+int main(int argc, char** argv) {
+    int N, M;
+    bool useCPU;
+    parseArguments(argc, argv, N, M, useCPU);
+    int total = N * M;
+
+    std::vector<int> ns(total);
+    std::vector<float> xs_float(total);
+    std::vector<double> xs_double(total);
+
+    for (int i = 0; i < total; ++i) {
+        ns[i] = i % 5; // keep n small (0-4)
+        xs_float[i] = (float)(1.0f + (i % 100) / 10.0f);
+        xs_double[i] = (double)(1.0 + (i % 100) / 10.0);
     }
 
-    vector<float> xFloat(m);
-    vector<double> xDouble(m);
-    for (int i = 0; i < m; ++i) {
-        float x = i * 10.0f / (m - 1);
-        xFloat[i] = x;
-        xDouble[i] = static_cast<double>(x);
-    }
+    std::vector<float> result_cpu_float(total), result_gpu_float(total);
+    std::vector<double> result_cpu_double(total), result_gpu_double(total);
 
-    vector<float> cpuResultsFloat(m);
-    vector<double> cpuResultsDouble(m);
-
-    double cpuTime = 0;
-    if (runCPU) {
-        cout << "Running CPU version...\n";
-        auto start = chrono::high_resolution_clock::now();
-        for (int i = 0; i < m; ++i) {
-            cpuResultsFloat[i] = exponentialIntegralFloat(n, xFloat[i]);
-            cpuResultsDouble[i] = exponentialIntegralDouble(n, xDouble[i]);
+    if (useCPU) {
+        // CPU Execution
+        auto start = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < total; ++i) {
+            result_cpu_float[i] = exponentialIntegralFloat(ns[i], xs_float[i]);
         }
-        auto end = chrono::high_resolution_clock::now();
-        chrono::duration<double> elapsed = end - start;
-        cpuTime = elapsed.count();
-        cout << "CPU Time: " << cpuTime << " seconds\n";
-    }
+        for (int i = 0; i < total; ++i) {
+            result_cpu_double[i] = exponentialIntegralDouble(ns[i], xs_double[i]);
+        }
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> diff = end - start;
+        std::cout << "[CPU] Execution time: " << diff.count() << " seconds\n";
+    } else {
+        // GPU Execution
+        launchFloatKernel(ns.data(), xs_float.data(), result_gpu_float.data(), total);
+        launchDoubleKernel(ns.data(), xs_double.data(), result_gpu_double.data(), total);
 
-    if (runGPU) {
-        cout << "Running GPU version...\n";
-        cudaEvent_t start, stop;
-        cudaEventCreate(&start);
-        cudaEventCreate(&stop);
-
-        vector<float> gpuResultsFloat;
-        vector<double> gpuResultsDouble;
-
-        cudaEventRecord(start);
-        computeExponentialIntegralFloatGPU(n, xFloat, gpuResultsFloat);
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        float floatTime = 0;
-        cudaEventElapsedTime(&floatTime, start, stop);
-        checkCUDAError("Float GPU Kernel");
-
-        cudaEventRecord(start);
-        computeExponentialIntegralDoubleGPU(n, xDouble, gpuResultsDouble);
-        cudaEventRecord(stop);
-        cudaEventSynchronize(stop);
-        float doubleTime = 0;
-        cudaEventElapsedTime(&doubleTime, start, stop);
-        checkCUDAError("Double GPU Kernel");
-
-        floatTime /= 1000.0f;
-        doubleTime /= 1000.0f;
-
-        cout << "GPU Time (float): " << floatTime << " seconds\n";
-        cout << "GPU Time (double): " << doubleTime << " seconds\n";
-
-        if (runCPU && cpuTime > 0) {
-            cout << "Speedup (float): " << cpuTime / floatTime << "\n";
-            cout << "Speedup (double): " << cpuTime / doubleTime << "\n";
+        // For accuracy, run CPU too
+        for (int i = 0; i < total; ++i) {
+            result_cpu_float[i] = exponentialIntegralFloat(ns[i], xs_float[i]);
+        }
+        for (int i = 0; i < total; ++i) {
+            result_cpu_double[i] = exponentialIntegralDouble(ns[i], xs_double[i]);
         }
 
-        if (runCPU) {
-            cout << "\nVerifying results (first 5 samples):\n";
-            for (int i = 0; i < min(5, m); ++i) {
-                float error = fabs(cpuResultsFloat[i] - gpuResultsFloat[i]);
-                double d_error = fabs(cpuResultsDouble[i] - gpuResultsDouble[i]);
-                printf("x = %.5f | CPU_f: %.8f | GPU_f: %.8f | Err_f: %.2e\n",
-                       xFloat[i], cpuResultsFloat[i], gpuResultsFloat[i], error);
-                printf("x = %.5f | CPU_d: %.12f | GPU_d: %.12f | Err_d: %.2e\n\n",
-                       xFloat[i], cpuResultsDouble[i], gpuResultsDouble[i], d_error);
+        // Accuracy Check
+        int float_diff = 0, double_diff = 0;
+        for (int i = 0; i < total; ++i) {
+            if (fabs(result_cpu_float[i] - result_gpu_float[i]) > 1e-5f) {
+                ++float_diff;
+                if (float_diff <= 5) {
+                    std::cout << std::setprecision(10)
+                              << "Mismatch [float] at " << i << ": CPU=" << result_cpu_float[i]
+                              << ", GPU=" << result_gpu_float[i] << "\n";
+                }
             }
         }
 
-        cudaEventDestroy(start);
-        cudaEventDestroy(stop);
+        for (int i = 0; i < total; ++i) {
+            if (fabs(result_cpu_double[i] - result_gpu_double[i]) > 1e-5) {
+                ++double_diff;
+                if (double_diff <= 5) {
+                    std::cout << std::setprecision(15)
+                              << "Mismatch [double] at " << i << ": CPU=" << result_cpu_double[i]
+                              << ", GPU=" << result_gpu_double[i] << "\n";
+                }
+            }
+        }
+
+        std::cout << "[Check] Float mismatches: " << float_diff << " / " << total << "\n";
+        std::cout << "[Check] Double mismatches: " << double_diff << " / " << total << "\n";
     }
 
     return 0;

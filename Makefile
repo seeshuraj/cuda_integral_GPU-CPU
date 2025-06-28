@@ -1,23 +1,27 @@
-NVCC = nvcc
-NVFLAGS = -O2 -std=c++11
+# Compiler settings
+NVCC = /usr/local/cuda-10.1/bin/nvcc
+CXX = g++
+CXXFLAGS = -O3 -std=c++11
+NVCCFLAGS = -O3
 
-EXEC = ei_exec
+# Targets and files
+EXEC = exp_integral
+OBJS = main.o gpu_integral.o cpu_integral.o
 
-OBJS = main.o cpu_integral.o gpu_integral.o
-
+# Rules
 all: $(EXEC)
 
-main.o: main.cpp cpu_integral.h gpu_integral.h
-	$(NVCC) $(NVFLAGS) -c main.cpp
+$(EXEC): $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^
 
-cpu_integral.o: cpu_integral.cpp cpu_integral.h
-	$(NVCC) $(NVFLAGS) -c cpu_integral.cpp
+main.o: main.cpp gpu_integral.h cpu_integral.h
+	$(CXX) $(CXXFLAGS) -c main.cpp
 
 gpu_integral.o: gpu_integral.cu gpu_integral.h
-	$(NVCC) $(NVFLAGS) -c gpu_integral.cu
+	$(NVCC) $(NVCCFLAGS) -c gpu_integral.cu
 
-$(EXEC): $(OBJS)
-	$(NVCC) -o $(EXEC) $(OBJS)
+cpu_integral.o: cpu_integral.cpp cpu_integral.h
+	$(CXX) $(CXXFLAGS) -c cpu_integral.cpp
 
 clean:
 	rm -f *.o $(EXEC)

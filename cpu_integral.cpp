@@ -1,40 +1,22 @@
-#include "cpu_integral.h"
 #include <cmath>
+#include "cpu_integral.h"
 
-// Compute the exponential integral using numerical integration
-// This uses a simple trapezoidal rule with a large number of iterations for convergence
-
+// CPU implementation: E_n(x) function for float
 float exponentialIntegralFloat(int n, float x) {
-    const int maxIterations = 1000000;
-    const float t_max = 100.0f;
-    const float dt = (t_max - 1.0f) / maxIterations;
-
+    if (n == 0) return expf(-x) / x;
     float sum = 0.0f;
-    for (int i = 0; i < maxIterations; ++i) {
-        float t1 = 1.0f + i * dt;
-        float t2 = t1 + dt;
-        float f1 = expf(-x * t1) / powf(t1, n);
-        float f2 = expf(-x * t2) / powf(t2, n);
-        sum += 0.5f * (f1 + f2) * dt;
+    for (int k = 1; k <= 100; ++k) {
+        sum += powf(x, k - 1) / (tgammaf(k + n));
     }
-
-    return sum;
+    return expf(-x) * sum;
 }
 
+// CPU implementation: E_n(x) function for double
 double exponentialIntegralDouble(int n, double x) {
-    const int maxIterations = 1000000;
-    const double t_max = 100.0;
-    const double dt = (t_max - 1.0) / maxIterations;
-
+    if (n == 0) return exp(-x) / x;
     double sum = 0.0;
-    for (int i = 0; i < maxIterations; ++i) {
-        double t1 = 1.0 + i * dt;
-        double t2 = t1 + dt;
-        double f1 = exp(-x * t1) / pow(t1, n);
-        double f2 = exp(-x * t2) / pow(t2, n);
-        sum += 0.5 * (f1 + f2) * dt;
+    for (int k = 1; k <= 100; ++k) {
+        sum += pow(x, k - 1) / (tgamma(k + n));
     }
-
-    return sum;
+    return exp(-x) * sum;
 }
-

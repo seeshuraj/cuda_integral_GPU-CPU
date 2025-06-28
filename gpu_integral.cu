@@ -1,116 +1,51 @@
-#include "gpu_integral.h"
 #include <cuda_runtime.h>
-#include <cmath>
-#include <iostream>
+#include <math.h>
+#include "gpu_integral.h"
 
-#define THREADS_PER_BLOCK 256
+__device__ float expIntegralSeriesFloat(int n, float x) {
+    if (n < 0 || x < 0.0f)
+        return -1.0f;
+    if (x == 0.0f)
+        return (n == 0) ? 1.0f : 1.0f / (float)(n - 1);
 
-__global__ void exponentialIntegralKernelFloat(int n, const float* x, float* results, int size) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= size) return;
-
-    float xi = x[idx];
     float sum = 0.0f;
-    int maxIterations = 1000000;
-    float t_max = 100.0f;
-    float dt = (t_max - 1.0f) / maxIterations;
-
-    for (int i = 0; i < maxIterations; ++i) {
-        float t1 = 1.0f + i * dt;
-        float t2 = t1 + dt;
-        float f1 = expf(-xi * t1) / powf(t1, n);
-        float f2 = expf(-xi * t2) / powf(t2, n);
-        sum += 0.5f * (f1 + f2) * dt;
+    float term = 1.0f;
+    for (int k = 1; k < 100; k++) {
+        term *= -x / (float)(k + n);
+        sum += term;
+        if (fabs(term) < 1e-6f)
+            break;
     }
-    results[idx] = sum;
+    return expf(-x) * (1.0f / (float)n + sum);
 }
 
-__global__ void exponentialIntegralKernelDouble(int n, const double* x, double* results, int size) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= size) return;
+__device__ double expIntegralSeriesDouble(int n, double x) {
+    if (n < 0 || x < 0.0)
+        return -1.0;
+    if (x == 0.0)
+        return (n == 0) ? 1.0 : 1.0 / (double)(n - 1);
 
-    double xi = x[idx];
     double sum = 0.0;
-    int maxIterations = 1000000;
-    double t_max = 100.0;
-    double dt = (t_max - 1.0) / maxIterations;
-
-    for (int i = 0; i < maxIterations; ++i) {
-        double t1 = 1.0 + i * dt;
-        double t2 = t1 + dt;
-        double f1 = exp(-xi * t1) / pow(t1, n);
-        double f2 = exp(-xi * t2) / pow(t2, n);
-        sum += 0.5 * (f1 + f2) * dt;
+    double term = 1.0;
+    for (int k = 1; k < 100; k++) {
+        term *= -x / (double)(k + n);
+        sum += term;
+        if (fabs(term) < 1e-10)
+            break;
     }
-    results[idx] = sum;
+    return exp(-x) * (1.0 / (double)n + sum);
 }
 
-void computeExponentialIntegralFloatGPU(int n, const std::vector<float>& xValues, std::vector<float>& results) {
-    int size = xValues.size();
-    results.resize(size);
-
-    float *d_x, *d_results;
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-
-    cudaEventRecord(start);
-
-    cudaMalloc(&d_x, size * sizeof(float));
-    cudaMalloc(&d_results, size * sizeof(float));
-
-    cudaMemcpy(d_x, xValues.data(), size * sizeof(float), cudaMemcpyHostToDevice);
-
-    int blocks = (size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-    exponentialIntegralKernelFloat<<<blocks, THREADS_PER_BLOCK>>>(n, d_x, d_results, size);
-
-    cudaMemcpy(results.data(), d_results, size * sizeof(float), cudaMemcpyDeviceToHost);
-
-    cudaFree(d_x);
-    cudaFree(d_results);
-
-    cudaEventRecord(stop);
-    cudaEventSynchronize(stop);
-
-    float elapsedTime;
-    cudaEventElapsedTime(&elapsedTime, start, stop);
-    std::cout << "[DEBUG] Total CUDA time (float): " << elapsedTime / 1000.0f << " seconds\n";
-
-    cudaEventDestroy(start);
-    cudaEventDestroy(stop);
+__global__ void computeExpIntegralFloat(int* d_ns, float* d_xs, float* d_results, int total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) {
+        d_results[idx] = expIntegralSeriesFloat(d_ns[idx], d_xs[idx]);
+    }
 }
 
-void computeExponentialIntegralDoubleGPU(int n, const std::vector<double>& xValues, std::vector<double>& results) {
-    int size = xValues.size();
-    results.resize(size);
-
-    double *d_x, *d_results;
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-
-    cudaEventRecord(start);
-
-    cudaMalloc(&d_x, size * sizeof(double));
-    cudaMalloc(&d_results, size * sizeof(double));
-
-    cudaMemcpy(d_x, xValues.data(), size * sizeof(double), cudaMemcpyHostToDevice);
-
-    int blocks = (size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-    exponentialIntegralKernelDouble<<<blocks, THREADS_PER_BLOCK>>>(n, d_x, d_results, size);
-
-    cudaMemcpy(results.data(), d_results, size * sizeof(double), cudaMemcpyDeviceToHost);
-
-    cudaFree(d_x);
-    cudaFree(d_results);
-
-    cudaEventRecord(stop);
-    cudaEventSynchronize(stop);
-
-    float elapsedTime;
-    cudaEventElapsedTime(&elapsedTime, start, stop);
-    std::cout << "[DEBUG] Total CUDA time (double): " << elapsedTime / 1000.0f << " seconds\n";
-
-    cudaEventDestroy(start);
-    cudaEventDestroy(stop);
-}  
+__global__ void computeExpIntegralDouble(int* d_ns, double* d_xs, double* d_results, int total) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < total) {
+        d_results[idx] = expIntegralSeriesDouble(d_ns[idx], d_xs[idx]);
+    }
+}
